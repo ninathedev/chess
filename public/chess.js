@@ -42,7 +42,12 @@ class Piece {
 
 		// Move forward one square
 		if (board[y + direction][x] === null && this.isMoveSafe(board, x, y, x, y + direction)) {
-			moves.push([x, y + direction]);
+			// Promotion check
+			if (y + direction === 0 || y + direction === 7) {
+				moves.push([x, y + direction, true, false]);
+			} else {
+				moves.push([x, y + direction]);
+			}
 			// Move forward two squares from starting position
 			if (y === startRow && board[y + 2 * direction][x] === null && this.isMoveSafe(board, x, y, x, y + 2 * direction)) {
 				moves.push([x, y + 2 * direction, false]); // false indicates normal move
@@ -51,20 +56,29 @@ class Piece {
 
 		// Capture diagonally left
 		if (x > 0 && board[y + direction][x - 1] !== null && board[y + direction][x - 1].color !== this.color && this.isMoveSafe(board, x, y, x - 1, y + direction)) {
-			moves.push([x - 1, y + direction, false]); // false indicates normal capture
+			// check for promotion
+			if (y + direction === 0 || y + direction === 7) {
+				moves.push([x - 1, y + direction, true, false]); // true indicates promotion
+			} else {
+				moves.push([x - 1, y + direction, false]); // false indicates normal capture
+			}
 		}
 
 		// Capture diagonally right
 		if (x < 7 && board[y + direction][x + 1] !== null && board[y + direction][x + 1].color !== this.color && this.isMoveSafe(board, x, y, x + 1, y + direction)) {
-			moves.push([x + 1, y + direction, false]); // false indicates normal capture
+		  if (y + direction === 0 || y + direction === 7) {
+				moves.push([x + 1, y + direction, true, false]); // true indicates promotion
+			} else {
+				moves.push([x + 1, y + direction, false]); // false indicates normal capture
+			}
 		}
 
 		// En passant
 		if (x > 0 && board[y][x - 1] !== null && board[y][x - 1].name === "p" && board[y][x - 1].color !== this.color && board[y][x - 1].movedHowLongAgo === 0 && this.isMoveSafe(board, x, y, x - 1, y + direction)) {
-			moves.push([x - 1, y + direction, true]); // true indicates en passant
+			moves.push([x - 1, y + direction, true, true]); // true indicates en passant
 		}
 		if (x < 7 && board[y][x + 1] !== null && board[y][x + 1].name === "p" && board[y][x + 1].color !== this.color && board[y][x + 1].movedHowLongAgo === 0 && this.isMoveSafe(board, x, y, x + 1, y + direction)) {
-			moves.push([x + 1, y + direction, true]); // true indicates en passant
+			moves.push([x + 1, y + direction, true, true]); // true indicates en passant
 		}
 
 		return moves;
@@ -335,6 +349,10 @@ class Piece {
 		}
 
 		return this.isSquareUnderAttack(board, kingPosition.x, kingPosition.y, color);
+	}
+
+	setName(name) {
+		this.name = name;
 	}
 
 	getName() {
