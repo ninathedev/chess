@@ -28,46 +28,43 @@ class Piece {
     return [];
   }
 
+  isMoveSafe(board, x, y, newX, newY) {
+    let tempBoard = JSON.parse(JSON.stringify(board));
+    tempBoard[newY][newX] = tempBoard[y][x];
+    tempBoard[y][x] = null;
+    return !this.isKingInCheck(tempBoard, this.color);
+  };
+
   getPawnMoves(board, x, y) {
     let moves = [];
     let direction = this.color === "white" ? -1 : 1; // White moves up, black moves down
     let startRow = this.color === "white" ? 6 : 1; // Starting row for pawns
 
-    // Helper function to check if a move puts the king in check
-    const isMoveSafe = (board, x, y, newX, newY) => {
-      let tempBoard = JSON.parse(JSON.stringify(board));
-      tempBoard[newY][newX] = tempBoard[y][x];
-      tempBoard[y][x] = null;
-      return !this.isKingInCheck(tempBoard, this.color);
-    };
-
     // Move forward one square
-    if (board[y + direction][x] === null && isMoveSafe(board, x, y, x, y + direction)) {
+    if (board[y + direction][x] === null && this.isMoveSafe(board, x, y, x, y + direction)) {
       moves.push([x, y + direction]);
       // Move forward two squares from starting position
-      if (y === startRow && board[y + 2 * direction][x] === null && isMoveSafe(board, x, y, x, y + 2 * direction)) {
+      if (y === startRow && board[y + 2 * direction][x] === null && this.isMoveSafe(board, x, y, x, y + 2 * direction)) {
         moves.push([x, y + 2 * direction, false]); // false indicates normal move
       }
     }
 
     // Capture diagonally left
-    if (x > 0 && board[y + direction][x - 1] !== null && board[y + direction][x - 1].color !== this.color && isMoveSafe(board, x, y, x - 1, y + direction)) {
+    if (x > 0 && board[y + direction][x - 1] !== null && board[y + direction][x - 1].color !== this.color && this.isMoveSafe(board, x, y, x - 1, y + direction)) {
       moves.push([x - 1, y + direction, false]); // false indicates normal capture
     }
 
     // Capture diagonally right
-    if (x < 7 && board[y + direction][x + 1] !== null && board[y + direction][x + 1].color !== this.color && isMoveSafe(board, x, y, x + 1, y + direction)) {
+    if (x < 7 && board[y + direction][x + 1] !== null && board[y + direction][x + 1].color !== this.color && this.isMoveSafe(board, x, y, x + 1, y + direction)) {
       moves.push([x + 1, y + direction, false]); // false indicates normal capture
     }
 
     // En passant
-    if (this.movedHowLongAgo === 1) {
-      if (x > 0 && board[y][x - 1] !== null && board[y][x - 1].name === "p" && board[y][x - 1].color !== this.color && board[y][x - 1].movedHowLongAgo === 1 && isMoveSafe(board, x, y, x - 1, y + direction)) {
-        moves.push([x - 1, y + direction, true]); // true indicates en passant
-      }
-      if (x < 7 && board[y][x + 1] !== null && board[y][x + 1].name === "p" && board[y][x + 1].color !== this.color && board[y][x + 1].movedHowLongAgo === 1 && isMoveSafe(board, x, y, x + 1, y + direction)) {
-        moves.push([x + 1, y + direction, true]); // true indicates en passant
-      }
+    if (x > 0 && board[y][x - 1] !== null && board[y][x - 1].name === "p" && board[y][x - 1].color !== this.color && board[y][x - 1].movedHowLongAgo === 0 && this.isMoveSafe(board, x, y, x - 1, y + direction)) {
+      moves.push([x - 1, y + direction, true]); // true indicates en passant
+    }
+    if (x < 7 && board[y][x + 1] !== null && board[y][x + 1].name === "p" && board[y][x + 1].color !== this.color && board[y][x + 1].movedHowLongAgo === 0 && this.isMoveSafe(board, x, y, x + 1, y + direction)) {
+      moves.push([x + 1, y + direction, true]); // true indicates en passant
     }
 
     return moves;
@@ -91,10 +88,10 @@ class Piece {
         newY += direction.y;
         if (newX < 0 || newX > 7 || newY < 0 || newY > 7) break;
         if (board[newY][newX] === null) {
-          if (!isMoveSafe(board, x, y, newX, newY)) continue;
+          if (!this.isMoveSafe(board, x, y, newX, newY)) continue;
           moves.push([newX, newY]);
         } else {
-          if (board[newY][newX].color !== this.color && isMoveSafe(board, x, y, newX, newY)) {
+          if (board[newY][newX].color !== this.color && this.isMoveSafe(board, x, y, newX, newY)) {
             moves.push([newX, newY]);
           }
           break;
@@ -122,7 +119,7 @@ class Piece {
       let newX = x + move.x;
       let newY = y + move.y;
       if (newX >= 0 && newX <= 7 && newY >= 0 && newY <= 7) {
-        if ((board[newY][newX] === null || board[newY][newX].color !== this.color) && isMoveSafe(board, x, y, newX, newY)) {
+        if ((board[newY][newX] === null || board[newY][newX].color !== this.color) && this.isMoveSafe(board, x, y, newX, newY)) {
           moves.push([newX, newY]);
         }
       }
@@ -149,10 +146,10 @@ class Piece {
         newY += direction.y;
         if (newX < 0 || newX > 7 || newY < 0 || newY > 7) break;
         if (board[newY][newX] === null) {
-          if (!isMoveSafe(board, x, y, newX, newY)) continue;
+          if (!this.isMoveSafe(board, x, y, newX, newY)) continue;
           moves.push([newX, newY]);
         } else {
-          if (board[newY][newX].color !== this.color && isMoveSafe(board, x, y, newX, newY)) {
+          if (board[newY][newX].color !== this.color && this.isMoveSafe(board, x, y, newX, newY)) {
             moves.push([newX, newY]);
           }
           break;
@@ -194,7 +191,7 @@ class Piece {
       let newX = x + move.x;
       let newY = y + move.y;
       if (newX >= 0 && newX <= 7 && newY >= 0 && newY <= 7) {
-        if ((board[newY][newX] === null || board[newY][newX].color !== this.color) && isMoveSafe(board, x, y, newX, newY)) {
+        if ((board[newY][newX] === null || board[newY][newX].color !== this.color) && this.isMoveSafe(board, x, y, newX, newY)) {
           moves.push([newX, newY, false]);
         }
       }
@@ -208,9 +205,9 @@ class Piece {
         board[y][6] === null &&
         board[y][7] !== null &&
         !board[y][7].hasMoved &&
-        !isSquareUnderAttack(board, x, y, this.color) &&
-        !isSquareUnderAttack(board, 5, y, this.color) &&
-        !isSquareUnderAttack(board, 6, y, this.color)
+        !this.isSquareUnderAttack(board, x, y, this.color) &&
+        !this.isSquareUnderAttack(board, 5, y, this.color) &&
+        !this.isSquareUnderAttack(board, 6, y, this.color)
       ) {
         moves.push([6, y, true]); // Castling move
       }
@@ -221,9 +218,9 @@ class Piece {
         board[y][1] === null &&
         board[y][0] !== null &&
         !board[y][0].hasMoved &&
-        !isSquareUnderAttack(board, x, y, this.color) &&
-        !isSquareUnderAttack(board, 3, y, this.color) &&
-        !isSquareUnderAttack(board, 2, y, this.color)
+        !this.isSquareUnderAttack(board, x, y, this.color) &&
+        !this.isSquareUnderAttack(board, 3, y, this.color) &&
+        !this.isSquareUnderAttack(board, 2, y, this.color)
       ) {
         moves.push([2, y, true]); // Castling move
       }
@@ -233,30 +230,103 @@ class Piece {
   }
 
   isSquareUnderAttack(board, x, y, color) {
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        let piece = board[row][col];
-        if (piece && piece.color !== color) {
-          let opponentMoves = piece.getAvailableMoves(board, col, row);
-          for (let move of opponentMoves) {
-            if (move[0] === x && move[1] === y) {
-              return true;
+    const opponentColor = color === "white" ? "black" : "white";
+    const pawnDirection = opponentColor === "white" ? -1 : 1;
+
+    // Check for pawn attacks
+    const attackingRow = y - pawnDirection; // Row where the attacking pawn would be
+    if (attackingRow >= 0 && attackingRow < 8) {
+        // Check diagonal left attacker
+        if (x > 0) {
+            const leftAttacker = board[attackingRow][x - 1];
+            if (leftAttacker && leftAttacker.name === "p" && leftAttacker.color === opponentColor) {
+                return true;
             }
-          }
         }
-      }
+        // Check diagonal right attacker
+        if (x < 7) {
+            const rightAttacker = board[attackingRow][x + 1];
+            if (rightAttacker && rightAttacker.name === "p" && rightAttacker.color === opponentColor) {
+                return true;
+            }
+        }
     }
+
+    // Check for knight attacks
+    const knightMoves = [
+        { x: 2, y: 1 }, { x: 2, y: -1 },
+        { x: -2, y: 1 }, { x: -2, y: -1 },
+        { x: 1, y: 2 }, { x: 1, y: -2 },
+        { x: -1, y: 2 }, { x: -1, y: -2 }
+    ];
+    for (const move of knightMoves) {
+        const newX = x + move.x;
+        const newY = y + move.y;
+        if (newX >= 0 && newX <= 7 && newY >= 0 && newY <= 7) {
+            const attacker = board[newY][newX];
+            if (attacker && attacker.name === "n" && attacker.color === opponentColor) {
+                return true;
+            }
+        }
+    }
+
+    // Check for rook and queen attacks (horizontally and vertically)
+    const rookDirections = [{ x: 0, y: 1 }, { x: 0, y: -1 }, { x: 1, y: 0 }, { x: -1, y: 0 }];
+    for (const dir of rookDirections) {
+        let newX = x + dir.x;
+        let newY = y + dir.y;
+        while (newX >= 0 && newX <= 7 && newY >= 0 && newY <= 7) {
+            const attacker = board[newY][newX];
+            if (attacker) {
+                if ((attacker.name === "r" || attacker.name === "q") && attacker.color === opponentColor) return true;
+                break;
+            }
+            newX += dir.x;
+            newY += dir.y;
+        }
+    }
+
+    // Check for bishop and queen attacks (diagonally)
+    const bishopDirections = [{ x: 1, y: 1 }, { x: 1, y: -1 }, { x: -1, y: 1 }, { x: -1, y: -1 }];
+    for (const dir of bishopDirections) {
+        let newX = x + dir.x;
+        let newY = y + dir.y;
+        while (newX >= 0 && newX <= 7 && newY >= 0 && newY <= 7) {
+            const attacker = board[newY][newX];
+            if (attacker) {
+                if ((attacker.name === "b" || attacker.name === "q") && attacker.color === opponentColor) return true;
+                break;
+            }
+            newX += dir.x;
+            newY += dir.y;
+        }
+    }
+
+    // Check for king attacks
+    const kingMoves = [
+        { x: 1, y: 0 }, { x: -1, y: 0 }, { x: 0, y: 1 }, { x: 0, y: -1 },
+        { x: 1, y: 1 }, { x: -1, y: -1 }, { x: 1, y: -1 }, { x: -1, y: 1 }
+    ];
+    for (const move of kingMoves) {
+        const newX = x + move.x;
+        const newY = y + move.y;
+        if (newX >= 0 && newX <= 7 && newY >= 0 && newY <= 7) {
+            const attacker = board[newY][newX];
+            if (attacker && attacker.name === "k" && attacker.color === opponentColor) {
+                return true;
+            }
+        }
+    }
+
     return false;
   }
 
   isKingInCheck(board, color) {
     let kingPosition = null;
-
-    // Find the king's position
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         let piece = board[row][col];
-        if (piece !== null && piece.name === "k" && piece.color === color) {
+        if (piece && piece.name === "k" && piece.color === color) {
           kingPosition = { x: col, y: row };
           break;
         }
@@ -264,23 +334,7 @@ class Piece {
       if (kingPosition) break;
     }
 
-    // Check if any opponent piece can attack the king
-    for (let row = 0; row < 8; row++) {
-      for (let col = 0; col < 8; col++) {
-        let piece = board[row][col];
-        if (piece && piece.color !== color) {
-          console.log(piece);
-          let opponentMoves = piece.getAvailableMoves(board, col, row);
-          for (let move of opponentMoves) {
-            if (move[0] === kingPosition.x && move[1] === kingPosition.y) {
-              return true;
-            }
-          }
-        }
-      }
-    }
-
-    return false;
+    return this.isSquareUnderAttack(board, kingPosition.x, kingPosition.y, color);
   }
 
   getName() {

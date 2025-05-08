@@ -2,6 +2,7 @@ let board = [];
 let pieceImg = [];
 let selectedPiece = null;
 let isWhiteTurn = true; // Track whose turn it is
+let moveCounter = 0; // To track how long ago a pawn moved for en passant
 
 function preload() {
   // Load any images or assets here if needed
@@ -21,7 +22,7 @@ function preload() {
 
 function setup() {
   createCanvas(500, 500);
-  
+
   board = [
     [new Piece("r", "black"), new Piece("n", "black"), new Piece("b", "black"), new Piece("q", "black"), new Piece("k", "black"), new Piece("b", "black"), new Piece("n", "black"), new Piece("r", "black")],
     [new Piece("p", "black"), new Piece("p", "black"), new Piece("p", "black"), new Piece("p", "black"), new Piece("p", "black"), new Piece("p", "black"), new Piece("p", "black"), new Piece("p", "black")],
@@ -44,9 +45,9 @@ function draw() {
     for (let col = 0; col < 8; col++) {
       // Alternate colors
       if ((row + col) % 2 === 0) {
-        fill(235,236,208,255); // White
+        fill(235, 236, 208, 255); // White
       } else {
-        fill(115,149,82,255); // Green
+        fill(115, 149, 82, 255); // Green
       }
       rect(col * tileSize, row * tileSize, tileSize, tileSize);
     }
@@ -56,9 +57,11 @@ function draw() {
     for (let c = 0; c < 8; c++) {
       let piece = board[r][c];
       if (piece) {
-        // use switch case to determine the piece type and color
-        let pieceType = piece.name;
-        let pieceColor = piece.color === "white" ? 0 : 1; // 0 for white, 1 for black
+        // Store the piece's current position for move generation
+        piece.x = c;
+        piece.y = r;
+        let pieceType = piece.getName();
+        let pieceColor = piece.getColor() === "white" ? 0 : 1; // 0 for white, 1 for black
         let imgIndex = pieceColor * 6 + "prnbqk".indexOf(pieceType); // Calculate the index based on color and type
         image(pieceImg[imgIndex], c * tileSize, r * tileSize, tileSize, tileSize); // Draw the piece
       }
@@ -83,32 +86,64 @@ function mouseClicked() {
 
   if (x >= 0 && x < 8 && y >= 0 && y < 8) {
     let piece = board[y][x];
-    if (piece && ((isWhiteTurn && piece.color === "white") || (!isWhiteTurn && piece.color === "black"))) {
+    if (piece && ((isWhiteTurn && piece.getColor() === "white") || (!isWhiteTurn && piece.getColor() === "black"))) {
       selectedPiece = piece;
-      selectedPiece.x = x; // Store the x coordinate of the selected piece
-      selectedPiece.y = y; // Store the y coordinate of the selected piece
+      // The x and y are already being set in the draw function
     } else {
       // Move the selected piece to the clicked square if it's a valid move
       if (selectedPiece) {
         let moves = selectedPiece.getAvailableMoves(board, selectedPiece.x, selectedPiece.y);
         for (let move of moves) {
           if (move[0] === x && move[1] === y) {
-            board[y][x] = selectedPiece; // Move the piece to the new square
-            board[selectedPiece.y][selectedPiece.x] = null; // Remove it from its old square
-            selectedPiece.hasMoved = true; // Mark the piece as having moved
-            for (let row of board) {
-              for (let piece of row) {
-                if (piece) {
-                  piece.add();
+            let capturedPiece = board[y][x];
+            let originalX = selectedPiece.x;
+            let originalY = selectedPiece.y;
+
+            // Handle en passant capture
+            if (move[2] === true) {
+              board[originalY][x] = null; // Remove the captured pawn
+            }
+
+            // Move the piece
+            board[y][x] = selectedPiece;
+            board[originalY][originalX] = null;
+            selectedPiece.setHasMoved(true);
+            selectedPiece.resetMoves(); // Reset movedHowLongAgo
+
+            // Handle castling
+            if (selectedPiece.getName() === "k" && Math.abs(originalX - x) > 1 && move[2] === true) {
+              let rookStartX = x > originalX ? 7 : 0;
+              let rookY = originalY;
+              let rookEndX = x > originalX ? x - 1 : x + 1;
+
+              let castlingRook = board[rookY][rookStartX];
+              if (castlingRook) {
+                board[rookY][rookEndX] = castlingRook;
+                board[rookY][rookStartX] = null;
+                castlingRook.setHasMoved(true);
+                castlingRook.resetMoves(); // Reset movedHowLongAgo for the rook as well
+              }
+            }
+
+            // Increment move counter and update movedHowLongAgo for all pawns
+            moveCounter++;
+            for (let r = 0; r < 8; r++) {
+              for (let c = 0; c < 8; c++) {
+                if (board[r][c]?.getName() === "p" && board[r][c] !== selectedPiece) {
+                  board[r][c].add();
                 }
               }
             }
-            selectedPiece.resetMoves(); // Reset the moves for the piece
+            if (selectedPiece.getName() === "p") {
+              selectedPiece.resetMoves(); // Reset for the moved pawn
+            }
+
             isWhiteTurn = !isWhiteTurn; // Switch turns
+            selectedPiece = null; // Deselect the piece after moving
             break;
           }
         }
-        selectedPiece = null; // Deselect the piece after moving
+        selectedPiece = null; // Deselect if the click was not a valid move
       }
     }
   }
