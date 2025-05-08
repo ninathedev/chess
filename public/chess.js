@@ -38,7 +38,7 @@ class Piece {
       let tempBoard = JSON.parse(JSON.stringify(board));
       tempBoard[newY][newX] = tempBoard[y][x];
       tempBoard[y][x] = null;
-      return !isKingInCheck(tempBoard, this.color);
+      return !this.isKingInCheck(tempBoard, this.color);
     };
 
     // Move forward one square
@@ -236,7 +236,7 @@ class Piece {
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         let piece = board[row][col];
-        if (piece !== null && piece.color !== color) {
+        if (piece && piece.color !== color) {
           let opponentMoves = piece.getAvailableMoves(board, col, row);
           for (let move of opponentMoves) {
             if (move[0] === x && move[1] === y) {
@@ -268,7 +268,8 @@ class Piece {
     for (let row = 0; row < 8; row++) {
       for (let col = 0; col < 8; col++) {
         let piece = board[row][col];
-        if (piece !== null && piece.color !== color) {
+        if (piece && piece.color !== color) {
+          console.log(piece);
           let opponentMoves = piece.getAvailableMoves(board, col, row);
           for (let move of opponentMoves) {
             if (move[0] === kingPosition.x && move[1] === kingPosition.y) {

@@ -96,6 +96,14 @@ function mouseClicked() {
             board[y][x] = selectedPiece; // Move the piece to the new square
             board[selectedPiece.y][selectedPiece.x] = null; // Remove it from its old square
             selectedPiece.hasMoved = true; // Mark the piece as having moved
+            for (let row of board) {
+              for (let piece of row) {
+                if (piece) {
+                  piece.add();
+                }
+              }
+            }
+            selectedPiece.resetMoves(); // Reset the moves for the piece
             isWhiteTurn = !isWhiteTurn; // Switch turns
             break;
           }
