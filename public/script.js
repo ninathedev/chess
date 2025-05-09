@@ -161,77 +161,81 @@ function mouseClicked() {
             selectedPiece = null; // Deselect the piece after moving
 
             // ai time!!!
-            // For simplicity, let's just make a random move for the AI for now.
-            // loop through the board and store every available move for the AI
-            let aiMoves = [];
-            for (let r = 0; r < 8; r++) {
-              for (let c = 0; c < 8; c++) {
-                let aiPiece = board[r][c];
-                if (aiPiece && aiPiece.getColor() === "black") {
-                  let aiAvailableMoves = aiPiece.getAvailableMoves(board, c, r);
-                  for (let move of aiAvailableMoves) {
-                    aiMoves.push([aiPiece, move]);
-                  }
+            // make a POST request to /minimax with the current board state
+            /* json:
+            {
+              "board": board,
+              "isDepth": (true or false; depending on whether you want to use depth or time)
+              "depth": 3, // if true, send depth
+              "time": 30 // if false, send time in seconds
+            } */
+            let requestData = {
+              board,
+              isDepth: true,
+              depth: 3
+            };
+            fetch("/minimax", {
+              method: "POST",
+              headers: {
+              "Content-Type": "application/json"
+              },
+              body: JSON.stringify(requestData)
+            })
+              .then(response => response.json())
+              .then(data => {
+              console.log(data);
+              // Handle the AI's move here
+              let aiMove = data; // Assuming the AI returns the move in the specified format
+
+              if (aiMove) {
+                console.table(board);
+                console.log(board[aiMove[1]][aiMove[0]]);
+                let aiPiece = board[aiMove[1]][aiMove[0]];
+                let originalX = aiMove[0];
+                let originalY = aiMove[1];
+                let targetX = aiMove[2];
+                let targetY = aiMove[3];
+
+                // Move the piece
+                board[targetY][targetX] = aiPiece;
+                board[originalY][originalX] = null;
+                aiPiece.setHasMoved(true);
+                aiPiece.resetMoves(); // Reset movedHowLongAgo for the AI piece
+
+                // Handle en passant
+                if (aiMove[4] === true && aiMove[5] === false) {
+                board[originalY][targetX] = null; // Remove the captured pawn
+                }
+
+                // Handle castling
+                if (aiPiece.getName() === "k" && Math.abs(originalX - targetX) > 1 && aiMove[4] === true) {
+                let rookStartX = targetX > originalX ? 7 : 0;
+                let rookY = originalY;
+                let rookEndX = targetX > originalX ? targetX - 1 : targetX + 1;
+
+                let castlingRook = board[rookY][rookStartX];
+                if (castlingRook) {
+                  board[rookY][rookEndX] = castlingRook;
+                  board[rookY][rookStartX] = null;
+                  castlingRook.setHasMoved(true);
+                  castlingRook.resetMoves(); // Reset movedHowLongAgo for the rook as well
+                }
+                }
+
+                // Handle promotion
+                if (aiMove[4] === true && aiMove[5] === true) {
+                let promotionPiece = aiMove[6]; // The string indicating the promotion piece
+                aiPiece.setName(promotionPiece);
                 }
               }
-            }
-            // If there are available moves, pick one at random
-            if (aiMoves.length > 0) {
-              let randomMove = random(aiMoves);
-              let aiPiece = randomMove[0];
-              let aiMove = randomMove[1];
 
-              // Move the AI piece
-              let aiOriginalX = aiPiece.x;
-              let aiOriginalY = aiPiece.y;
-              board[aiMove[1]][aiMove[0]] = aiPiece;
-              board[aiOriginalY][aiOriginalX] = null;
-              aiPiece.setHasMoved(true);
-              aiPiece.resetMoves(); // Reset movedHowLongAgo for the AI piece
+              // Switch turns back to player
+              isWhiteTurn = !isWhiteTurn;
+              })
+              .catch(error => console.error("Error:", error));
 
-              // Handle en passant for AI move
-              if (aiMove[2] === true && aiMove[3] === true) {
-                board[aiOriginalY][aiMove[0]] = null; // Remove the captured pawn
-              }
-              if (aiMove[2] === true && aiMove[3] === false) {
-                // promotion. randomly promote to a queen, rook, knight or bishop, but pick queen 75% of the time
-                let promoteTo = random(["q", "r", "n", "b"]);
-                if (random() < 0.75) {
-                  promoteTo = "q"; // 75% chance to promote to a queen
-                }
-
-                board[aiMove[1]][aiMove[0]] = new Piece(promoteTo, "black");
-              }
-
-              // Handle castling for AI move
-              if (aiPiece.getName() === "k" && Math.abs(aiOriginalX - aiMove[0]) > 1 && aiMove[2] === true) {
-                let aiRookStartX = aiMove[0] > aiOriginalX ? 7 : 0;
-                let aiRookY = aiOriginalY;
-                let aiRookEndX = aiMove[0] > aiOriginalX ? aiMove[0] - 1 : aiMove[0] + 1;
-
-                let aiCastlingRook = board[aiRookY][aiRookStartX];
-                if (aiCastlingRook) {
-                  board[aiRookY][aiRookEndX] = aiCastlingRook;
-                  board[aiRookY][aiRookStartX] = null;
-                  aiCastlingRook.setHasMoved(true);
-                  aiCastlingRook.resetMoves(); // Reset movedHowLongAgo for the rook as well
-                }
-              }
-              // Increment move counter and update movedHowLongAgo for all pawns
-              moveCounter++;
-              for (let r = 0; r < 8; r++) {
-                for (let c = 0; c < 8; c++) {
-                  if (board[r][c]?.getName() === "p" && board[r][c] !== aiPiece) {
-                    board[r][c].add();
-                  }
-                }
-              }
-              if (aiPiece.getName() === "p") {
-                aiPiece.resetMoves(); // Reset for the moved pawn
-              }
-
-              isWhiteTurn = !isWhiteTurn; // Switch turns back to player
-            }
+            isWhiteTurn = !isWhiteTurn; // Switch turns back to player
+            moveCounter++;
 
             break;
           }
