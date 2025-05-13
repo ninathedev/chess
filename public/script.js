@@ -162,13 +162,6 @@ function mouseClicked() {
 
             // ai time!!!
             // make a POST request to /minimax with the current board state
-            /* json:
-            {
-              "board": board,
-              "isDepth": (true or false; depending on whether you want to use depth or time)
-              "depth": 3, // if true, send depth
-              "time": 30 // if false, send time in seconds
-            } */
             let requestData = {
               board,
               isDepth: true,
