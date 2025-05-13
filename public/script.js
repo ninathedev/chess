@@ -181,20 +181,23 @@ function mouseClicked() {
               },
               body: JSON.stringify(requestData)
             })
-              .then(response => response.json())
+              .then(response => {
+              if (response.status === 204) {
+                alert("No move available from AI! Please check if checkmate or stalemate.");
+                return null;
+              }
+              return response.json();
+              })
               .then(data => {
-              console.log(data);
+              if (!data) return; // Exit if no move is available
               // Handle the AI's move here
               let aiMove = data; // Assuming the AI returns the move in the specified format
-
               if (aiMove) {
-                console.table(board);
-                console.log(board[aiMove[1]][aiMove[0]]);
-                let aiPiece = board[aiMove[1]][aiMove[0]];
-                let originalX = aiMove[0];
-                let originalY = aiMove[1];
-                let targetX = aiMove[2];
-                let targetY = aiMove[3];
+                let aiPiece = board[aiMove.move[1]][aiMove.move[0]];
+                let originalX = aiMove.move[0];
+                let originalY = aiMove.move[1];
+                let targetX = aiMove.move[2];
+                let targetY = aiMove.move[3];
 
                 // Move the piece
                 board[targetY][targetX] = aiPiece;
@@ -203,7 +206,7 @@ function mouseClicked() {
                 aiPiece.resetMoves(); // Reset movedHowLongAgo for the AI piece
 
                 // Handle en passant
-                if (aiMove[4] === true && aiMove[5] === false) {
+                if (aiMove.move[4] === true && aiMove.move[5] === false) {
                 board[originalY][targetX] = null; // Remove the captured pawn
                 }
 
@@ -223,14 +226,13 @@ function mouseClicked() {
                 }
 
                 // Handle promotion
-                if (aiMove[4] === true && aiMove[5] === true) {
-                let promotionPiece = aiMove[6]; // The string indicating the promotion piece
+                if (aiMove.move[4] === true && aiMove.move[5] === true) {
+                let promotionPiece = aiMove.move[6]; // The string indicating the promotion piece
                 aiPiece.setName(promotionPiece);
                 }
               }
 
               // Switch turns back to player
-              isWhiteTurn = !isWhiteTurn;
               })
               .catch(error => console.error("Error:", error));
 
