@@ -10,7 +10,7 @@ const app: express.Application = express();
 app.use(express.json());
 const PORT: number = 3000;
 // sudo apt autoremove
-app.get('/', (req: express.Request, res : express.Response) => {
+app.get('/', (req: express.Request, res: express.Response) => {
   res.sendFile('public/index.html', { root: __dirname });
 });
 app.get('/c', (req: express.Request, res: express.Response) => {
@@ -33,7 +33,7 @@ app.get('/img/:color/:piece.png', (req: express.Request, res: express.Response) 
   }
 });
 
-function simulateMove(board: (Piece | null)[][], move: any): (Piece | null)[][] {
+/*function simulateMove(board: (Piece | null)[][], move: any): (Piece | null)[][] {
   // Placeholder logic to simulate a move
   const newBoard = JSON.parse(JSON.stringify(board)) as (Piece | null)[][];
   const [fromX, fromY, toX, toY] = move;
@@ -44,9 +44,9 @@ function simulateMove(board: (Piece | null)[][], move: any): (Piece | null)[][] 
     newBoard[fromY][fromX] = null;
   }
   return newBoard;
-}
+}*/
 
-function minimax(board: (Piece | null)[][], depth: number, isMaximizing: boolean): number {
+function minimax(board: (Piece | null)[][], depth: number, isMaximizing: boolean, allBlackMoves: any[], allWhiteMoves: any[]): number {
   // Base case: return a static evaluation of the board
   if (depth === 0) {
     return evaluateBoard(board);
@@ -55,20 +55,32 @@ function minimax(board: (Piece | null)[][], depth: number, isMaximizing: boolean
   if (isMaximizing) {
     let maxEval = -Infinity;
     // Generate all possible moves for maximizing player
-    const moves = generateMoves(board, "black");
+    const moves = allBlackMoves; // Correct - maximizing is black
     for (const move of moves) {
       const simulatedBoard = simulateMove(board, move);
-      const evaluation = minimax(simulatedBoard, depth - 1, false);
+      const newAllBlackMoves: any[] = [];
+      const newAllWhiteMoves: any[] = [];
+
+      // Generate moves for the next level
+      generateAllMoves(simulatedBoard, newAllBlackMoves, newAllWhiteMoves);
+
+      const evaluation = minimax(simulatedBoard, depth - 1, false, newAllBlackMoves, newAllWhiteMoves);
       maxEval = Math.max(maxEval, evaluation);
     }
     return maxEval;
   } else {
     let minEval = Infinity;
     // Generate all possible moves for minimizing player
-    const moves = generateMoves(board, "white");
+    const moves = allWhiteMoves; // Correct - minimizing is white
     for (const move of moves) {
       const simulatedBoard = simulateMove(board, move);
-      const evaluation = minimax(simulatedBoard, depth - 1, true);
+      const newAllBlackMoves: any[] = [];
+      const newAllWhiteMoves: any[] = [];
+
+      // Generate moves for the next level
+      generateAllMoves(simulatedBoard, newAllBlackMoves, newAllWhiteMoves);
+
+      const evaluation = minimax(simulatedBoard, depth - 1, true, newAllBlackMoves, newAllWhiteMoves);
       minEval = Math.min(minEval, evaluation);
     }
     return minEval;
@@ -76,14 +88,76 @@ function minimax(board: (Piece | null)[][], depth: number, isMaximizing: boolean
 }
 
 function evaluateBoard(board: (Piece | null)[][]): number {
-  // Placeholder for board evaluation logic
-  return 0;
+  const pieceValues: { [key: string]: number } = {
+    p: 1, // Pawn
+    n: 3, // Knight
+    b: 3, // Bishop
+    r: 5, // Rook
+    q: 9, // Queen
+    k: 0  // King (typically not assigned a value for evaluation)
+  };
+
+  let evaluation = 0;
+
+  for (let row of board) {
+    for (let piece of row) {
+      if (piece) {
+        const value = pieceValues[piece.name.toLowerCase()] || 0;
+        evaluation += piece.color === "white" ? value : -value;
+      }
+    }
+  }
+  return evaluation;
 }
 
-function generateMoves(board: (Piece | null)[][], color: string): any[] {
-  // Placeholder for move generation logic
-  return [];
+function simulateMove(board: (Piece | null)[][], move: any[]): (Piece | null)[][] {
+  const [startCol, startRow, endCol, endRow] = move;
+  // Create a deep copy to avoid modifying the original board
+  const newBoard: (Piece | null)[][] = board.map(row =>
+    row.map(piece => {
+      if (piece) {
+        // Re-create Piece object to preserve methods
+        return new Piece(piece.name, piece.color);
+      }
+      return null;
+    })
+  );
+
+  const movingPiece = newBoard[startRow]?.[startCol] ?? null;
+  if (!movingPiece) {
+    return newBoard; // Handle the case where there's no piece to move
+  }
+
+  if (newBoard[startRow]?.[startCol] !== undefined) {
+    newBoard[startRow][startCol] = null;
+  }
+  if (newBoard[endRow]) {
+    newBoard[endRow][endCol] = movingPiece;
+  }
+
+  return newBoard;
 }
+
+function generateAllMoves(board: (Piece | null)[][], blackMoves: any[], whiteMoves: any[]) {
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      const piece = board[r]?.[c];
+      if (piece) {
+        const availableMoves = piece.getAvailableMoves(board, c, r);
+        if (piece.color === "black") {
+          for (const move of availableMoves) {
+            blackMoves.push([c, r, move[0], move[1], move[2] ?? false, move[3] ?? false]);
+          }
+        } else if (piece.color === "white") {
+          for (const move of availableMoves) {
+            whiteMoves.push([c, r, move[0], move[1], move[2] ?? false, move[3] ?? false]);
+          }
+        }
+      }
+    }
+  }
+}
+
 
 app.post('/minimax', (req: express.Request, res: express.Response) => {
   const depth: number = parseInt(req.body.depth as string) || 0;
@@ -104,7 +178,7 @@ app.post('/minimax', (req: express.Request, res: express.Response) => {
     [new Piece("p", "white"), new Piece("p", "white"), new Piece("p", "white"), new Piece("p", "white"), new Piece("p", "white"), new Piece("p", "white"), new Piece("p", "white"), new Piece("p", "white")],
     [new Piece("r", "white"), new Piece("n", "white"), new Piece("b", "white"), new Piece("q", "white"), new Piece("k", "white"), new Piece("b", "white"), new Piece("n", "white"), new Piece("r", "white")]
   ];
-  */ 
+  */
   // for now, let's test this GET endpoint by waiting for the timer then giving a random move
 
   let aiMoves: any[] = []; // Changed from array[] to any[]
@@ -117,6 +191,20 @@ app.post('/minimax', (req: express.Request, res: express.Response) => {
         for (let move of aiAvailableMoves) {
           const newMove = [c, r, move[0], move[1], move[2] ?? false, move[3] ?? false];
           aiMoves.push(newMove);
+        }
+      }
+    }
+  }
+  let humanMoves: any[] = []; // Changed from array[] to any[]
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 8; c++) {
+      let aiPieceData = board[r]?.[c] ?? null;
+      let aiPiece: Piece | null = aiPieceData ? new Piece(aiPieceData.name, aiPieceData.color) : null;
+      if (aiPiece && aiPiece.color === "white") {
+        let aiAvailableMoves: any[] = aiPiece.getAvailableMoves(board, c, r);
+        for (let move of aiAvailableMoves) {
+          const newMove = [c, r, move[0], move[1], move[2] ?? false, move[3] ?? false];
+          humanMoves.push(newMove);
         }
       }
     }
@@ -136,19 +224,19 @@ app.post('/minimax', (req: express.Request, res: express.Response) => {
     // minimax time!
     let bestMove: any = null;
     let bestValue: number = -Infinity;
-    
+
 
     for (let move of aiMoves) {
 
       const simulatedBoard = simulateMove(board, move);
-      const moveValue = minimax(simulatedBoard, depth - 1, false);
-      
+      const moveValue = minimax(simulatedBoard, depth - 1, false, aiMoves, humanMoves); // Assuming white moves next
+
       if (moveValue > bestValue) {
         bestValue = moveValue;
         bestMove = move;
       }
     }
-    
+
     res.json({ move: bestMove });
   } else {
     res.status(204).send('No Content'); // No available moves, maybe checkmate or stalemate?
